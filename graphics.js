@@ -111,7 +111,7 @@ export const graphics = (function() {
         return this._scene;
       }
 
-      Render(timeInSeconds) {
+      Render() {
         this._composer.render();      // Рендерим сцену
         this._stats.update();         // Обновляем характеристики
       }

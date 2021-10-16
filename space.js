@@ -9,8 +9,16 @@ import {OBJLoader} from 'https://cdn.jsdelivr.net/npm/three@0.112.1/examples/jsm
 
 let _APP = null;
 
-const _NUM_BOIDS = 300;
-const _BOID_SPEED = 25;
+
+// В качестве ботов используются боиды. Объекты, на которые действуют три направляющие силы:
+// Separation - сила, чтобы избегать скопление боидов
+// Alignment - сила, выравниваюшее направление боида по среднему направлению окружающих его боидов
+// Cohesion - сила, направляющая боида в среднее положение других боидов
+// Во всех случаях под "другими" боидами подразумеваются боиды, которые входят в радиус дествия рассматриваемого боида
+// Причем по радиусом действия тут понимается не просто окружность, а сектор, у которого есть градусная мера и радиус.
+// Обусловленно это тем, что боиды не должны "видеть" то, что за ними
+const _NUM_BOIDS = 300;                             // Количество боидов
+const _BOID_SPEED = 25;                             // Скорость боидов
 const _BOID_ACCELERATION = _BOID_SPEED / 2.5;
 const _BOID_FORCE_MAX = _BOID_ACCELERATION / 20.0;
 const _BOID_FORCE_ORIGIN = 50;
@@ -21,68 +29,74 @@ const _BOID_FORCE_COHESION = 5;
 const _BOID_FORCE_WANDER = 3;
 
 
+// Класс для ренгеринга выстрелов
 class LineRenderer {
   constructor(game) {
-    this._game = game;
+    this._game = game;                    // Оставляем ссылку на объект игры
 
-    this._materials = {};
-    this._group = new THREE.Group();
+    this._materials = {};                 // Объявялем пустой словарь материалов
+    this._group = new THREE.Group();      // Создаем группу 3д объектов
 
-    this._game._graphics.Scene.add(this._group);
+    this._game._graphics.Scene.add(this._group);  // Добавляем группу объектов на сцену
   }
 
+  // Метод для удаления всех линий
   Reset() {
-    this._lines = [];
-    this._group.remove(...this._group.children);
+    this._lines = [];                             // Обнуляем список линий
+    this._group.remove(...this._group.children);  // Удаляем 3д объекты, чтобы они удалились со сцены
   }
 
+  // Метод для добавления линии из точки pt1 в pt2 с цветом hexColour
   Add(pt1, pt2, hexColour) {
-    const geometry = new THREE.Geometry();
-    geometry.vertices.push(pt1);
+    const geometry = new THREE.Geometry();      // Создаем форму
+    geometry.vertices.push(pt1);                // Добавляем в форму вершины
     geometry.vertices.push(pt2);
 
-    let material = this._materials[hexColour];
-    if (!material) {
-      this._materials[hexColour] = new THREE.LineBasicMaterial(
+    let material = this._materials[hexColour];      // Объявляем материал из словаря материалов по ключу цвету
+    if (!material) {                                // Если такого нет, то объявляем новый материал
+      this._materials[hexColour] = new THREE.LineBasicMaterial(     // И добавляем его в словарь материалов
           {color: hexColour});
-      material = this._materials[hexColour];
+      material = this._materials[hexColour];                // После этого опять объявляем переменную с материалом
     }
 
-    const line = new THREE.Line(geometry, material);
-    this._lines.push(line);
-    this._group.add(line);
+    const line = new THREE.Line(geometry, material);      // Теперь создаем 3д объект линии из формы и материала
+    this._lines.push(line);                           // Добавляем в списко линий
+    this._group.add(line);                            // Добавляем в группу, чтобы отрисовалось на сцене
   }
 }
 
+// Класс для симуляции рендеринга взрыва частиц
 class ExplodeParticles {
   constructor(game) {
-    this._particleSystem = new particles.ParticleSystem(
+    this._particleSystem = new particles.ParticleSystem(      // Создаем систему частиц
         game, {texture: "./resources/blaster.jpg"});
-    this._particles = [];
+    this._particles = [];                                     // Создаем пустой список частиц
   }
 
+  // Метод генерирующий частицы с эпицентром в origin
   Splode(origin) {
-    for (let i = 0; i < 128; i++) {
+    for (let i = 0; i < 128; i++) {                       // Генерируем 128 частиц
       const p = this._particleSystem.CreateParticle();
-      p.Position.copy(origin);
-      p.Velocity = new THREE.Vector3(
+      p.Position.copy(origin);                            // Задаем им начальное положение в эпицентре
+      p.Velocity = new THREE.Vector3(                     // Генерируем рандомно вектор скорости
           math.rand_range(-1, 1),
           math.rand_range(-1, 1),
           math.rand_range(-1, 1)
       );
-      p.Velocity.normalize();
-      p.Velocity.multiplyScalar(125);
-      p.TotalLife = 2.0;
-      p.Life = p.TotalLife;
-      p.Colours = [new THREE.Color(0xFF8000), new THREE.Color(0x800000)];
+      p.Velocity.normalize();                             // Нормализуем вектор
+      p.Velocity.multiplyScalar(125);                     // Задаем вектору длину в 125
+      p.TotalLife = 2.0;                                  // Определяем время жизни частиц в секундах
+      p.Life = p.TotalLife;                               // Определяем оставшееся время жизни частиц в секундах
+      p.Colours = [new THREE.Color(0xFF8000), new THREE.Color(0x800000)];   // Определяем цвет частиц
       p.Sizes = [3, 12];
       p.Size = p.Sizes[0];
-      this._particles.push(p);
+      this._particles.push(p);          // Добавляем частицу в список частиц
     }
   }
 
+  // Метод для обновления характеристик частиц в момент времени timeInSeconds
   Update(timeInSeconds) {
-    this._particles = this._particles.filter(p => {
+    this._particles = this._particles.filter(p => {       // Обновляем список частиц, убирая оттуда те, которые уже "умерли"
       return p.Alive;
     });
     for (const p of this._particles) {
@@ -98,7 +112,7 @@ class ExplodeParticles {
     }
     this._particleSystem.Update();
   }
-};
+}
 
 
 class Boid {

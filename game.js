@@ -38,7 +38,11 @@ export const game = (function() {
       }
 
       _RAF() {
-        requestAnimationFrame((t) => {
+        // Встроенный метод для более плавной анимации. Вместо того, чтобы вызывать новые кадры каждый интервал ровно
+        // Кадры вызываются каждый раз, когда браузер готов к перерисовке.
+        // В первую очередь это сделано для более плавной анимации, потому что не всегда анимационные кадры готовы к отрисовке
+        // ровно в интервал
+        requestAnimationFrame((t) => {    // Вызываем метод, который говорит браузеру о том, что мы хотим выполнить анимацию
           if (this._previousRAF === null) {
             this._previousRAF = t;
           }
@@ -47,10 +51,11 @@ export const game = (function() {
         });
       }
 
+      // Рендерим сцену
       _Render(timeInMS) {
         const timeInSeconds = timeInMS * 0.001;
         this._OnStep(timeInSeconds);
-        this._graphics.Render(timeInSeconds);
+        this._graphics.Render();
 
         this._RAF();
       }
