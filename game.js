@@ -5,19 +5,19 @@ import {graphics} from './graphics.js';
 
 export const game = (function() {
   return {
-    Game: class {
+    Game: class {                          // Параметр, который задает объект игры
       constructor() {
         this._Initialize();
       }
 
       _Initialize() {
-        this._graphics = new graphics.Graphics(this);
+        this._graphics = new graphics.Graphics(this);             // Создаем объект для обработки графики
         if (!this._graphics.Initialize()) {
           this._DisplayError('WebGL2 is not available.');
           return;
         }
 
-        this._controls = this._CreateControls();
+        this._controls = this._CreateControls();      // Создаем контроллеры (чтобы пользователь мог взаимодействовать со сценой)
         this._previousRAF = null;
 
         this._OnInitialize();
@@ -25,7 +25,7 @@ export const game = (function() {
       }
 
       _CreateControls() {
-        const controls = new OrbitControls(
+        const controls = new OrbitControls(          // Добавляем контроллер, чтобы пользователь мог вращать сцену мышью
             this._graphics._camera, this._graphics._threejs.domElement);
         controls.target.set(0, 0, 0);
         controls.update();
@@ -33,7 +33,7 @@ export const game = (function() {
       }
 
       _DisplayError(errorText) {
-        const error = document.getElementById('error');
+        const error = document.getElementById('error');   // Добавляем на html страницу сообщение об ошибке
         error.innerText = errorText;
       }
 
